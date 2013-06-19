@@ -9,9 +9,18 @@ let _ =
     begin
       Array.sort decUnitValue all;
       let res = bb_solve all cap in
+      
       begin
-        Printf.printf "Result:\n";
-        Printf.printf "%s\n" (Result.to_string res)
+        Printf.printf "%d 1\n" (Result.get_value res);
+        let sel = Result.get_set all res in
+        for i= 0 to n-1 do
+          if Selection.mem i sel then  
+            Printf.printf "1"
+          else
+            Printf.printf "0"
+          ;
+          if i < n-1 then Printf.printf " "
+        done ;
       end
     end
       
