@@ -8,6 +8,17 @@ end
 type graph = Vertex.t array
 let adjacent (g:graph) (i:int) = g.(i)
 
+let print_adjacency nv g = 
+  begin
+    Printf.printf "%d vertices:\n" nv ;
+    for i = 0 to nv-1 do
+      Printf.printf "%d:" i;
+      Array.iter (fun x-> Printf.printf "%d " x) (adjacent g i);
+      Printf.printf "\n"
+    done
+  end
+      
+
 (* Converting from edge list to adjacency list *)
 let create_adjacency (nV:int) (edges: (int*int) list ) = 
   let adj = Array.create nV [| |] in
@@ -80,10 +91,11 @@ let process_input filename =
       | [] -> acc
       | line::tl ->
         let e = process_line line in
-        if i < nE then
-          loop (i+1) tl (e::acc) 
+        let new_acc = e::acc in
+        if i < (nE-1) then
+          loop (i+1) tl new_acc
         else 
-          acc
+          new_acc
   in
   let edges = loop 0 (List.tl lines) [] in
   (nV, edges)
