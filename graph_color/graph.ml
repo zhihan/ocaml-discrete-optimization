@@ -7,6 +7,8 @@ module Vertex = struct
   let compare x y = compare (Array.length x) (Array.length y)
 end
 
+let debugging = ref false
+
 type graph = Vertex.t array
 let adjacent (g:graph) (i:int) = g.(i)
 (* Get a range of integer and return in array *)
@@ -53,6 +55,27 @@ module IntSet = struct
   (* Convert array to set *)
   let from_array (a: int array) = 
     Array.fold_left (fun s e -> add e s) empty a
+
+  (* Conver set to array *) 
+  let to_array (s:t) = 
+    let a = Array.create (cardinal s) 0 in
+    let i = ref 0 in
+    begin
+      iter (fun e -> 
+	begin
+	  a.(!i) <- e;
+	  i := !i + 1
+	end) s;
+      a
+    end
+
+  let print s = 
+    begin
+      Printf.printf "[";
+      iter (fun x -> Printf.printf "%d " x) s;
+      Printf.printf "]\n"
+    end
+     
 end
 
 let find_max_adj (g:graph) (s:IntSet.t) = 
@@ -67,28 +90,93 @@ let find_max_adj (g:graph) (s:IntSet.t) =
     !idx
   end
 
+let enable_debugging () = 
+  debugging := true
+
+let max_clique ?debug:(d=false) (g:graph) (start:int) = 
+  let _ = (debugging := d ) in 
+  let candidates = IntSet.from_array (adjacent g start) in
+  let result = IntSet.singleton start in
+  let best_so_far = ref result in
+  
+  (* Determine whether the current vertex forms a clique *)
+  let form_clique (v:int) (vs:IntSet.t) = 
+    let adj_set = IntSet.from_array (adjacent g v) in
+    (* All vertices in the clique is the neighbor of v *)
+    IntSet.for_all ( fun c -> (IntSet.mem c adj_set)) vs
+  in
+  let stack = Stack.create () in
+  begin
+    Stack.push (candidates, result) stack ;
+    while not(Stack.is_empty stack) do
+      let (can, clique) = Stack.pop stack in
+      if (IntSet.is_empty can) then
+        (* No more candidate to try, found the max clique down this path *)
+	if (IntSet.cardinal clique) > (IntSet.cardinal (!best_so_far)) then
+	  begin
+	    if !debugging then Printf.printf "Update best %d \n" (IntSet.cardinal clique);
+	    best_so_far := clique
+	  end
+	else ()
+      else
+	let current = IntSet.min_elt can in
+	(* Process the current  *)
+	if (form_clique current clique) then
+	  (
+	    if !debugging then
+	      begin
+		Printf.printf "Clique\n";
+		IntSet.print clique;
+		Printf.printf "Candiates\n";
+		IntSet.print can;
+	        Printf.printf "Add %d\n" current;
+	      end
+	    else ();
+	    let new_clique = IntSet.add current clique in
+	    let a = IntSet.from_array (adjacent g current) in
+	    let new_candidate = IntSet.inter can a in
+	    (* Relaxation of clique size is |can| + |clique | *) 
+	    if ((IntSet.cardinal new_clique) + 
+		   (IntSet.cardinal new_candidate)) > 
+	      (IntSet.cardinal !best_so_far) then
+	      begin
+		(* If the current vertex forms a clique, add it and continue *)
+		if !debugging then
+		  Printf.printf "Keep adding\n"
+		else ();
+		Stack.push (IntSet.remove current can, clique) stack;
+		Stack.push (new_candidate, new_clique) stack 
+	      end
+	    else
+	      (* Skip the current vertex *)
+	      let new_candidate = IntSet.remove current can in
+	      Stack.push ( new_candidate, clique) stack
+	            
+	  )
+	  else
+	    (* Skip the current vertex *)
+	    let new_candidate = IntSet.remove current can in
+	      Stack.push ( new_candidate, clique) stack
+
+     done;
+    IntSet.elements !best_so_far
+  end
+
 let initial_clique (g:graph) (start:int) =
   (* Greedy algorithm: always add first *)
   let rec loop (acc:int list) (candidates: IntSet.t) = 
-    let _ = IntSet.iter (fun e -> Printf.printf " %d;" e) candidates in
     if (IntSet.is_empty candidates) then
       acc 
     else
-      (Printf.printf "size %d\n" (IntSet.cardinal candidates);
       let next = find_max_adj g candidates in
-      let _ = Printf.printf "pick %d" next in
       let next_adj = adjacent g next in
       let s = IntSet.from_array next_adj in
       (* Remove the existing ones from candidates *)
       let remain = List.fold_left 
         (fun ss e -> IntSet.remove e ss) s acc in  
       loop (next::acc) (IntSet.inter candidates remain)
-      )
   in
   let init = [start] in
-  let toprint = adjacent g start in
-  let _ = Printf.printf "adjacent\n" in
-  let _ = Array.iter (fun e -> Printf.printf "%d " e) toprint in
   let adj = IntSet.from_array (adjacent g start) in
   loop init adj
 
@@ -106,7 +194,6 @@ let create_adjacency (nV:int) (edges: (int*int) list ) =
           | [] -> ()
           | hd::tl -> 
             begin
-              Printf.printf "Out:Add (%d %d) to adj.%d\n" (fst hd) (snd hd) i;
               adjacent.(j) <- (snd hd);
               loop_out (j+1) tl
             end
@@ -116,7 +203,6 @@ let create_adjacency (nV:int) (edges: (int*int) list ) =
           | [] -> ()
           | hd::tl -> 
             begin
-              Printf.printf "In:Add %d to adj.%d\n" (fst hd) i;
               adjacent.(j) <- (fst hd);
               loop_in (j+1) tl
             end

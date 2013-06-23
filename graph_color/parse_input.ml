@@ -8,13 +8,19 @@ let _ =
     let g = create_adjacency n e in
     begin
       Printf.printf "Finished parsing %d\n" (Array.length g);
-      print_adjacency n g;
       Printf.printf "Start sorting\n";
       let a = sort_graph g in
       Printf.printf "Sort vertices %d.\n" a.(0) ;
+ 
       let x = initial_clique g a.(0) in
       Printf.printf "Initial clique %d\n" (List.length x);
-      List.iter (fun e -> Printf.printf "%d " e) x
+      List.iter (fun e -> Printf.printf "%d " e) x;
+      Printf.printf "\n";
+
+      let x = max_clique ~debug:false g a.(0) in
+      Printf.printf "Max clique %d\n" (List.length x);
+      List.iter (fun e -> Printf.printf "%d " e) x;
+      Printf.printf "\n"
     end
     )
 
