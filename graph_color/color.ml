@@ -68,7 +68,7 @@ end
 let initialize_clique ?mc:(m=true) (g:graph) (x:int) (colors:Colors.t) 
     (cd:ColorDegree.t) = 
   let clique = if m then 
-      max_clique g x
+      max_clique g
     else initial_clique g x
   in
   let rec loop i remain = 
@@ -99,9 +99,10 @@ let first_uncolored_max_cd (colors:Colors.t) (cd:ColorDegree.t) (n:int) : int op
 	end
       else ()
     done;
-    (* ColorDegree.print cd ;
-     Printf.printf " max cd %d\n" !idx;  *)
-    if (!max_cd >0) then
+    if !debugging then
+     ( ColorDegree.print cd ;
+     Printf.printf " max cd %d\n" !idx) else ();
+    if (!max_cd > -1) then
       Some(!idx)
     else 
       None
@@ -130,7 +131,7 @@ let next_available_color g colors v start =
     done;
     !c
   end 
-  
+
 let greedy_color ?debug:(d=false) (g:graph) = 
   begin 
     debugging := d; 
@@ -162,7 +163,7 @@ let greedy_color ?debug:(d=false) (g:graph) =
               (* Need to color the next vertex *)
 		let nextc = next_available_color g colors next 0 in
 		begin
-		  if (nextc > !nColors) then
+		  if (nextc >= !nColors) then
 		    nColors := nextc
 		  else (); 
 	   	  Colors.color colors next nextc;
@@ -173,7 +174,50 @@ let greedy_color ?debug:(d=false) (g:graph) =
 	end	  
   end
 
-let color ?debug:(d=false) ?start:(s=0) (g:graph)  = 
+let propagate (g:graph) (colors:Colors.t) (cd:ColorDegree.t)
+    stack (nC:int) = 
+  let find_singleton () = 
+    let idx = ref 0 in
+    let stop = ref false in
+    begin
+      while not(!stop) && (!idx < Array.length colors) do
+        if not(Colors.is_colored colors !idx) && 
+            ((ColorDegree.degree cd !idx) >= nC-1 ) then
+            stop := true
+        else 
+          idx := !idx + 1
+      done; 
+      if (!stop) then Some !idx else None 
+    end
+  in
+  (* If a singleton can be found propagate *)
+  let stop = ref false in
+  let bt = ref false in 
+  begin
+    while not(!stop) do
+      let nextOpt = find_singleton () in
+      match nextOpt with 
+        | Some next -> 
+          begin
+            let tryc = next_available_color g colors next 0 in
+            if (tryc >= nC) then 
+              begin
+                stop := true;
+                bt := true  (* backtrack *)
+              end
+            else
+              begin 
+                Colors.color colors next tryc;
+                ColorDegree.add cd colors g next;
+                Stack.push (next, tryc) stack
+              end
+          end
+        | None -> stop := true
+    done;
+    !bt
+  end
+
+let color ?debug:(d=false) ?start:(s=1) (g:graph)  = 
   begin 
     debugging := d; 
     let n = Array.length g in
@@ -181,7 +225,7 @@ let color ?debug:(d=false) ?start:(s=0) (g:graph)  =
     let cd = ColorDegree.create n in
     let sorted = sort_graph g in 
     (* Local functions *)
-    let nClique = initialize_clique g sorted.(0) colors cd in
+    let nClique = initialize_clique ~mc:true g sorted.(0) colors cd in
 
     let nColors = ref (max s nClique) in
     let stack = Stack.create () in
@@ -196,24 +240,26 @@ let color ?debug:(d=false) ?start:(s=0) (g:graph)  =
           let (last, lastc) = Stack.pop stack in
           let _ = Colors.uncolor colors last in
 	  let _ = ColorDegree.update cd colors g last in
-          if (lastc < !nColors) then
+          if (lastc < !nColors - 1) then
 	    let tryc = 
 	      next_available_color g colors last (lastc+1) in
-	    if (tryc <= !nColors) then
+	    if (tryc < !nColors) then
 	      (* Stop backtracking *)
 	      begin
 		Colors.color colors last tryc;
 		ColorDegree.add cd colors g last;
 		Stack.push (last, tryc) stack;
-		bt := false
+		bt := propagate g colors cd stack !nColors
 	      end
 	    else ()
           else ()
 	done;
 	if (Stack.is_empty stack) then
-	  (print_endline "empty stack";
-	   print_endline 
-	     ( "Try " ^ (string_of_int (!nColors + 1)) ^ "colors"); 
+	  ( if !debugging then 
+	      ( print_endline "empty stack";
+		print_endline 
+		  ( "Try " ^ (string_of_int (!nColors +1)) ^ "colors"); 
+	      ) else () ;
            nColors := !nColors + 1
 	  )
 	else ()
@@ -238,13 +284,17 @@ let color ?debug:(d=false) ?start:(s=0) (g:graph)  =
 	      | Some next -> 
               (* Need to color the next vertex *)
 		let nextc = next_available_color g colors next 0 in
-		if (nextc > !nColors) then
+		if (nextc >= !nColors) then
 		  backtrack () 
 		else 
 		  begin
 		    Colors.color colors next nextc;
 		    ColorDegree.add cd colors g next; 
-		    Stack.push (next, nextc) stack
+		    Stack.push (next, nextc) stack;
+                    let bt = propagate g colors cd stack !nColors in
+                    if bt then
+                      backtrack () 
+                    else ()
 		  end
 	  done;
 	  (colors, !nColors)

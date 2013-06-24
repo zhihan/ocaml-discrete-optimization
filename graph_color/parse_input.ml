@@ -17,7 +17,7 @@ let _ =
       List.iter (fun e -> Printf.printf "%d " e) x;
       Printf.printf "\n";
 
-      let x = max_clique ~debug:false g a.(0) in
+      let x = max_clique ~debug:false g in
       Printf.printf "Max clique %d\n" (List.length x);
       List.iter (fun e -> Printf.printf "%d " e) x;
       Printf.printf "\n"

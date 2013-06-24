@@ -56,6 +56,13 @@ module IntSet = struct
   let from_array (a: int array) = 
     Array.fold_left (fun s e -> add e s) empty a
 
+  let from_range l u =
+    let r = ref empty in
+    ( for i =1 to u do 
+	r := add i !r
+      done; 
+      !r )
+
   (* Conver set to array *) 
   let to_array (s:t) = 
     let a = Array.create (cardinal s) 0 in
@@ -93,17 +100,19 @@ let find_max_adj (g:graph) (s:IntSet.t) =
 let enable_debugging () = 
   debugging := true
 
-let max_clique ?debug:(d=false) (g:graph) (start:int) = 
+let max_clique ?debug:(d=false) (g:graph) = 
   let _ = (debugging := d ) in 
-  let candidates = IntSet.from_array (adjacent g start) in
-  let result = IntSet.singleton start in
+  let candidates = IntSet.from_range 0 ((Array.length g)-1) in
+  let result = IntSet.empty in
   let best_so_far = ref result in
   
   (* Determine whether the current vertex forms a clique *)
   let form_clique (v:int) (vs:IntSet.t) = 
     let adj_set = IntSet.from_array (adjacent g v) in
-    (* All vertices in the clique is the neighbor of v *)
-    IntSet.for_all ( fun c -> (IntSet.mem c adj_set)) vs
+    if (IntSet.is_empty vs ) then true 
+    else
+      (* All vertices in the clique is the neighbor of v *)
+      IntSet.for_all ( fun c -> (IntSet.mem c adj_set)) vs
   in
   let stack = Stack.create () in
   begin

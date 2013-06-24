@@ -6,8 +6,8 @@ let _ =
     let (n, e) = process_input filename in
     let g = create_adjacency n e in
     begin
-      let (colors,nC) = Color.color ~debug:false ~start:77 g in
-      let _ = Printf.printf "%d %d\n" (nC+1) 0 in 
+      let (colors,nC) = Color.color ~debug:false ~start:17 g in
+      let _ = Printf.printf "%d %d\n" nC 0 in 
       Array.iter (fun x -> Printf.printf "%d " x) colors 
     end
 
