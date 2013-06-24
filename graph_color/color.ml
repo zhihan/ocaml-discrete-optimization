@@ -7,7 +7,11 @@ module Colors = struct
   (* Uncolored items has number -1 *)
   let create (n:int) = Array.create n (-1) 
 
-  let uncolor (colors:t) (k:int) = colors.(k) <- -1
+  let uncolor (colors:t) (k:int) = 
+    begin 
+      colors.(k) <- -1;
+      if !debugging then Printf.printf "Uncolor %d\n" k else ()
+    end
 
   let is_colored (colors:t) (k:int) = colors.(k) > -1
 
@@ -26,7 +30,6 @@ module Colors = struct
       colors.(k) <- c;
       if !debugging then
 	Printf.printf "Color %d to %d: %s \n" k c  (to_string colors)
-
     end
 end
 
@@ -97,11 +100,13 @@ let first_uncolored_max_cd (colors:Colors.t) (cd:ColorDegree.t) (n:int) : int op
 	  max_cd := ColorDegree.degree cd i;
 	  idx := i 
 	end
-      else ()
+      else 
+        ()
     done;
     if !debugging then
-     ( ColorDegree.print cd ;
-     Printf.printf " max cd %d\n" !idx) else ();
+      ( Printf.printf "Colors %s\n" (Colors.to_string colors);
+        ColorDegree.print cd ;
+        Printf.printf "Uncolored max cd %d:%d\n" !idx !max_cd) else ();
     if (!max_cd > -1) then
       Some(!idx)
     else 
@@ -164,7 +169,7 @@ let greedy_color ?debug:(d=false) (g:graph) =
 		let nextc = next_available_color g colors next 0 in
 		begin
 		  if (nextc >= !nColors) then
-		    nColors := nextc
+		    nColors := nextc+1
 		  else (); 
 	   	  Colors.color colors next nextc;
 		  ColorDegree.add cd colors g next; 
@@ -300,3 +305,108 @@ let color ?debug:(d=false) ?start:(s=1) (g:graph)  =
 	  (colors, !nColors)
 	end	  
   end
+
+let refine ?debug:(d=false) (g:graph) (colors:Colors.t) (elim:int)(nC: int) =
+  begin
+    debugging := d;
+    for i=0 to ((Array.length g) -1) do
+      (* Eliminate the last color *) 
+      begin
+        if (Colors.get_color colors i) == elim then
+          Colors.uncolor colors i
+        else () ;
+        (* If eliminate one of the intermediate ones, recolor the last entry *)
+        if (elim != nC -1) then
+          if (Colors.get_color colors i) == nC -1 then
+            Colors.color colors i (elim)
+          else ()
+        else()
+      end
+    done;
+    let nColors = nC - 1 in
+    let n = Array.length g in
+    let cd = ColorDegree.create (Array.length g) in
+    for i=0 to ((Array.length g) -1) do
+      ColorDegree.update cd colors g i
+    done;
+    let stack = Stack.create () in
+    let backtrack () = 
+      let bt = ref true in
+      begin
+      (* Backtrack until another possibility *)
+	while (!bt && not(Stack.is_empty stack)) do 
+          let (last, lastc) = Stack.pop stack in
+          let _ = Colors.uncolor colors last in
+	  let _ = ColorDegree.update cd colors g last in
+          if (lastc < nColors - 1) then
+	    let tryc = 
+	      next_available_color g colors last (lastc+1) in
+	    if (tryc < nColors) then
+	      (* Stop backtracking *)
+	      begin
+		Colors.color colors last tryc;
+		ColorDegree.add cd colors g last;
+		Stack.push (last, tryc) stack;
+		bt := propagate g colors cd stack nColors
+	      end
+	    else ()
+          else ()
+	done;
+	if (Stack.is_empty stack) then false else true
+      end
+    in
+    let nextOpt = first_uncolored_max_cd colors cd n in
+    match nextOpt with
+      | None -> (colors, true)
+      | Some next ->       
+	let stop = ref false in 
+        let failed = ref false in
+        let nextc = next_available_color g colors next 0 in
+        if (nextc >= nColors) then
+          (colors, false)
+        else
+	  begin
+	  (* maintain a stack of (v, currentColor) *)
+	    Colors.color colors next nextc; 
+	    ColorDegree.add cd colors g next;
+	    Stack.push (next, nextc) stack; 
+	  
+	  while not(!stop) do
+	    let nextOpt = first_uncolored_max_cd colors cd n in
+	    match nextOpt with
+	      | None -> stop := true
+	      | Some next -> 
+                (* Need to color the next vertex *)
+		let nextc = next_available_color g colors next 0 in
+		if (nextc >= nColors) then
+		  let nonempty = backtrack () in
+                  if not(nonempty) then 
+                        (* Stack is empty, stop *)
+                    (
+                      stop := true;
+                      failed := true
+                    )
+                  else ()                  
+		else 
+		  begin
+		    Colors.color colors next nextc;
+		    ColorDegree.add cd colors g next; 
+		    Stack.push (next, nextc) stack;
+                    let bt = propagate g colors cd stack nColors in
+                    if bt then
+                      let nonempty = backtrack () in
+                      if not(nonempty) then 
+                        (* Stack is empty, stop *)
+                        (
+                          stop := true;
+                          failed := true
+                        )
+                      else ()
+                    else ()
+		  end
+	  done;
+	  (colors, not(!failed) )
+	end	      
+  end
+    
+
