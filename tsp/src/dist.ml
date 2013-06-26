@@ -1,3 +1,5 @@
+(** Dist.ml implements distance data structure. *)
+
 (* A simple map that maps (i,j) to dist *)
 module MappedDist = struct
   module IntPair = struct
@@ -28,10 +30,16 @@ module MappedDist = struct
   let add = PairMap.add 
 end
 
-
+(* Store distance in an array. To save space we avoid storing symmetric
+   entries. All distances are stored in a single array. *)
 module ArrayDist = struct
   type t = float array
 
+  (* Assume the dist matrix is [ a[00] a[01] a[02], ... a[20] a[21] a[22]],
+     We only need to store the entries [ a[01] a[02] a[12] ] in an array. 
+     
+     Function edge_idx calculate the index into the storing array. 
+  *) 
   let edge_idx i j n = 
     if i < j then
       (n-1 + n-i ) *i /2 + (j-i) -1
