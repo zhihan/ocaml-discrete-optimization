@@ -30,6 +30,30 @@ let find_first x pred : int option =
       None
   end
 
+let find_second x pred: int option = 
+  let idx = ref 0 in
+  let first = ref false in
+  let stop = ref false in
+  begin
+    while not(!stop) && ((!idx) < (Array.length x)) do 
+      if (pred x.(!idx) ) then
+        begin
+          if not(!first) then
+            first := true
+          else
+            stop := true ;
+          idx := !idx + 1
+        end
+      else 
+        idx := !idx + 1
+    done;
+    if (!stop) then
+      Some !idx
+    else
+      None
+  end
+  
+
 (* Find the max value in the array *)
 let find_max x f : int = 
   (* imperative implementation *)
@@ -95,3 +119,17 @@ let find_min_filter x (v:int->float) (f:int->bool) : int option =
       None
   end
   
+let reverse a startIdx endIdx =
+  let sub = Array.sub a startIdx (endIdx-startIdx+1) in
+  let l = Array.to_list sub in
+  let lv = List.rev l in
+  let rec loop i remain = 
+    match remain with
+      | [] -> ()
+      | h :: tl -> 
+        begin
+          a.(i) <- h;
+          loop (i+1) tl
+        end
+  in
+  loop (startIdx) lv 

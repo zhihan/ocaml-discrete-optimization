@@ -58,7 +58,9 @@ module ArrayDist = struct
     if i!= j then 
       d.(edge_idx i j n)
     else 0.0
-    
+  
+  let getE d (e:int*int) n = 
+    get d (fst e) (snd e) n
 
 end
 

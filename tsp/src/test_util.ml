@@ -13,6 +13,16 @@ let test_find_first () =
       end
     | None -> print_endline "Wrong result"
     
+let test_find_second () = 
+  let x = [| 1;2;3;4;5|] in
+  for i = 0 to (Array.length x) - 1 do
+    let m = x.(i) in
+    let f = find_second x (fun v -> v = m) in
+    match f with
+      | Some k -> Printf.printf "Find second %d at %d\n" m k
+      | None -> ()
+  done
+  
 
 let test_find_max () = 
   let x = [| 1;2;3;4;5|] in
@@ -39,11 +49,23 @@ let test_find_min_filter () =
       end
     | None -> print_endline "Wrong result"
 
+let test_reverse () =
+  let a = [|1;2;3;4;5|] in
+  let b = [|1;2;5;4;3|] in
+  begin
+    reverse a 2 4;
+    if  a <>  b then
+      Printf.printf "wrong\n"
+    else ()
+  end
+
 let main () = 
   begin
     test_find_first ();
+    test_find_second ();
     test_find_max ();
     test_find_min ();
-    test_find_min_filter ()
+    test_find_min_filter ();
+    test_reverse () 
   end
 let _ = main ()
