@@ -43,7 +43,6 @@ let compute_cost (tour:int array) (dist:ArrayDist.t) (nV:int) =
   end
     
 
-=======
 (* A simple greedy strategy that travels to the nearest neighbor
  at every step. *)
 let nearest_neighbor (n:int) (dist:ArrayDist.t) (start:int) = 
@@ -84,7 +83,8 @@ let nearest_neighbor (n:int) (dist:ArrayDist.t) (start:int) =
     (!cost, tour)
   end
     
-(* Print the result in the format required by the course *)    let print_result cost tour = 
+(* Print the result in the format required by the course *)    
+let print_result cost tour = 
   begin
     Printf.printf "%d %d\n" (int_of_float cost) 0;
     Array.iter (fun x-> Printf.printf "%d " x) tour
