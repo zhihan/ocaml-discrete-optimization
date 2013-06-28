@@ -1,6 +1,7 @@
 open Dist 
 open Util
 
+(* Create the distance data structure  *)
 let create_dist nV (coords: (float*float) list) = 
   let x = Array.create nV 0. in
   let y = Array.create nV 0. in
@@ -42,15 +43,19 @@ let compute_cost (tour:int array) (dist:ArrayDist.t) (nV:int) =
   end
     
 
+=======
+(* A simple greedy strategy that travels to the nearest neighbor
+ at every step. *)
 let nearest_neighbor (n:int) (dist:ArrayDist.t) (start:int) = 
   let visited = BoolArray.empty n in
   let tour = Array.create n start in
   let cost = ref 0.0 in
+
   (*Embedded function visit *)
   let visit (i:int) =
     BoolArray.set visited i
   in
-
+  (* Query whether the vertex is visited *)
   let not_visited (i:int) = 
     not (BoolArray.mem visited i)
   in
@@ -79,12 +84,10 @@ let nearest_neighbor (n:int) (dist:ArrayDist.t) (start:int) =
     (!cost, tour)
   end
     
-(* Print the result in the format required by the course *)    
-let print_result cost tour = 
+(* Print the result in the format required by the course *)    let print_result cost tour = 
   begin
     Printf.printf "%d %d\n" (int_of_float cost) 0;
-    Array.iter (fun x-> 
-      Printf.printf "%d " x) tour
+    Array.iter (fun x-> Printf.printf "%d " x) tour
   end
 
 let get_edge (tour:int array) (i:int) = 
