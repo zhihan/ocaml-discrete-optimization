@@ -5,6 +5,7 @@
    for the given problem set. *)
 open Matrix
 open Parse_input_warehouse
+open Unix (* time function *)
 
 exception Inconsistent of string
 
@@ -28,23 +29,20 @@ module KWarehouse = struct
     match r with
       | (l, w, c) -> 
         begin
-          Printf.printf "%s\n" (to_string r) ;
           let diff = ref 0. in
-          let n = Array.length w in
+          let m = Array.length w in
           let neww = Array.copy w in
-          for j= 0 to n-1 do
+          for j= 0 to m-1 do
             let d = (Dense.get trans j i) -.
               (Dense.get trans j w.(j)) in
             if d < 0. then
               begin
                 neww.(j) <- i; (* Reroute j to i *)
-                Printf.printf "Reroute %d from %d to %d saves %2.2f\n" j w.(j) i d;
                 diff := (!diff) +. d;
               end
             else ()
           done;
-          Printf.printf "%2.2f + %2.2f + %2.2f\n" c !diff setupi;
-          ( i::l, neww, c +. !diff -. setupi)
+          ( i::l, neww, c +. !diff +. setupi)
         end
 
   let cost x = match x with
@@ -68,6 +66,7 @@ module KWarehouse = struct
           Array.iteri (fun i j -> 
             tcost := !tcost +. (Dense.get trans i j)
           ) w;
+	  Printf.printf "tcost = %2.2f\n" !tcost;
           !tcost
         end
       in
@@ -75,7 +74,7 @@ module KWarehouse = struct
         (
           List.iter (fun x -> Printf.printf "%d " x) l; 
           Array.iteri (fun i j -> 
-            Printf.printf "%d ->> %d\n" j i
+            Printf.printf "%d ->> %d %2.2f\n " j i (Dense.get trans i j)
           ) w;
           Printf.printf "%2.2f + %2.2f - %2.2f\n" cost trans_cost c  ;
           raise (Inconsistent "Cost value is inconsistent" )
@@ -99,22 +98,23 @@ let one_open m n (cap:float array) setup demand trans =
         let total_cost = cost +. (Dense.sum_column trans i) in
         if (!first) then
           begin
-            best := KWarehouse.singleton i m total_cost;
+            best := KWarehouse.singleton i n total_cost;
             first := false
           end
         else
           if (KWarehouse.cost !best ) > total_cost then
-            best := KWarehouse.singleton i m total_cost
+            best := KWarehouse.singleton i n total_cost
           else ()
     done;
-    KWarehouse.validate !best;
+    KWarehouse.validate !best setup trans;
     !best
   end
 
 
-let greedy m n cap setup demand trans = 
+let greedy ?timeout:(tout=30) m n cap setup demand trans = 
   let best_one = one_open m n cap setup demand trans in
   let best_so_far = ref best_one in
+  let starttime = time () in 
 
   let find_neighbor r = 
     let candidates = ref [] in
@@ -128,8 +128,7 @@ let greedy m n cap setup demand trans =
             (* Local improving neighborhood *)
           if (KWarehouse.cost newr) < (KWarehouse.cost r) then
             (
-              Printf.printf "Open %d\n" i;
-              KWarehouse.validate newr setup trans;
+              (* KWarehouse.validate newr setup trans; *)
               candidates := newr :: !candidates
             )
           else ()
@@ -150,7 +149,12 @@ let greedy m n cap setup demand trans =
         end
       else () ;
       let neighbors = find_neighbor r in
-      List.iter (fun e-> explore e) neighbors
+      List.iter (fun e-> 	
+	let now = time () in 
+	if now -. starttime > (float_of_int tout) then 
+	  () 
+	else
+	  explore e) neighbors
     end
   in
   begin
@@ -167,7 +171,7 @@ let _ =
     let demand = Array.of_list demand in
     let trans = Dense.of_list n m trans in
     begin
-      let best = greedy m n cap setup demand trans in
+      let best = greedy ~timeout:3 m n cap setup demand trans in
       Printf.printf "Best so far %2.4f\n" (KWarehouse.cost best)
     end    
 
