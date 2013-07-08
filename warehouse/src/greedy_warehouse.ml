@@ -80,11 +80,8 @@ module KWarehouse = struct
           raise (Inconsistent "Cost value is inconsistent" )
         )
       else ()
-        
-      
 
 end
-
 
 (* Trivially open only one warehouse *)
 let one_open m n (cap:float array) setup demand trans = 
@@ -106,7 +103,6 @@ let one_open m n (cap:float array) setup demand trans =
             best := KWarehouse.singleton i n total_cost
           else ()
     done;
-    KWarehouse.validate !best setup trans;
     !best
   end
 
@@ -139,6 +135,16 @@ let greedy ?timeout:(tout=30) m n cap setup demand trans =
     end
   in
 
+  let sort_neighbors n = 
+    let result = Array.of_list n in
+    let cmp x y = Pervasives.compare 
+      (KWarehouse.cost x) (KWarehouse.cost y) in
+    (
+      Array.sort cmp result;
+      result 
+    )
+  in
+
   let rec explore r = 
     begin
       if (KWarehouse.cost r) < (KWarehouse.cost !best_so_far) then
@@ -149,17 +155,27 @@ let greedy ?timeout:(tout=30) m n cap setup demand trans =
         end
       else () ;
       let neighbors = find_neighbor r in
-      List.iter (fun e-> 	
+      let sorted = sort_neighbors neighbors in
+      Array.iter (fun e-> 	
 	let now = time () in 
 	if now -. starttime > (float_of_int tout) then 
 	  () 
 	else
-	  explore e) neighbors
+	  explore e) sorted
     end
   in
   begin
     explore !best_so_far;
     !best_so_far
+  end
+
+let write_out m n w cost = 
+  let filename = "result.dat" in
+  let oc = open_out filename in
+   begin
+    Printf.fprintf oc "%2.4f %d\n" cost 0; 
+    Array.iter (fun x -> Printf.fprintf oc "%d " x) w; 
+    close_out oc
   end
     
 let _ = 
@@ -171,7 +187,9 @@ let _ =
     let demand = Array.of_list demand in
     let trans = Dense.of_list n m trans in
     begin
-      let best = greedy ~timeout:3 m n cap setup demand trans in
+      let best = greedy ~timeout:60 m n cap setup demand trans in
+      KWarehouse.validate best setup trans;
+      write_out m n (KWarehouse.which best) (KWarehouse.cost best);
       Printf.printf "Best so far %2.4f\n" (KWarehouse.cost best)
     end    
 

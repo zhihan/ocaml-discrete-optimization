@@ -222,9 +222,6 @@ module Dense = struct
     let sum = ref 0. in
     begin
       for i = 0 to m-1 do
-	if (j=10) then
-	  Printf.printf "sum_column: %d,%d:%d %2.2f\n" i j m (get mat i j)
-	else ();
         sum := !sum +. (get mat i j)
       done;
       !sum
