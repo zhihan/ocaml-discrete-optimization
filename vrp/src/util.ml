@@ -1,4 +1,4 @@
-(* Some simple utilities *)
+(* Some simple utilities used in local search *)
 
 let array_range i j = 
   if (j < i) then 
