@@ -1,5 +1,6 @@
 (* Basic matrix computations *) 
 
+(* Create list of pairs from a pair of lists *)
 let zip_list a b = 
   let rec loop x y acc = 
     match (x,y) with
@@ -43,7 +44,7 @@ let shifted (idx:int array) (k:int) =
     result
   end
 
-    
+(** A sparse matrix represented in its triplet format. *)    
 module Triplet = struct
   (* 1-based matrix for use with glpk *)
   type t = int * int * int array* int array * float array
@@ -159,7 +160,7 @@ module Triplet = struct
             
 end
 
-(* A very simple dense matrix implementation *)
+(* Dense matrix stored in row-major form *)
 module Dense = struct
   type t = int * int * float array
 
