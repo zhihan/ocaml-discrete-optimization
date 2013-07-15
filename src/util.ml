@@ -88,6 +88,23 @@ let find_min x f : int =
     !idx
   end
 
+(* Find the min value in the array *)
+let find_min_idx x f : int = 
+  (* imperative implementation *)
+  let idx = ref 0 in
+  let minf = ref (f 0) in
+  begin
+    for i = 1 to (Array.length x)-1 do
+      if (f i) < !minf then
+        begin
+          idx := i;
+          minf := f i
+        end
+      else ()
+    done;
+    !idx
+  end
+
 (* Find min v if f is true *)
 let find_min_filter (x:int array) (v:int->float) (f:int->bool) : int option = 
   let minf = ref 0.0 in
@@ -134,3 +151,13 @@ let reverse a startIdx endIdx =
         end
   in
   loop (startIdx) lv 
+
+let array_insert (tour:int array) (i:int) (offset:int) = 
+  let tn = Array.length tour in
+  let new_tour = Array.make (tn+1) 0 in
+  begin
+    Array.blit tour 0 new_tour 0 (offset);
+    new_tour.(offset) <- i;
+    Array.blit tour offset new_tour (offset+1) (tn-offset);
+    new_tour 
+  end
