@@ -1,24 +1,7 @@
 open Dist 
 open Util
 
-(* Create the distance data structure  *)
-let create_dist nV (coords: (float*float) list) = 
-  let x = Array.create nV 0. in
-  let y = Array.create nV 0. in
-  let rec loop i remain  = 
-    match remain with
-      | [] -> ()
-      | h::tl -> 
-        begin
-          x.(i) <- fst h;
-          y.(i) <- snd h;
-          loop (i+1) tl
-        end 
-  in
-  begin
-    loop 0 coords;
-    ArrayDist.compute_edges x y
-  end
+exception WrongConfig of string
 
 let check_tour (tour:int array) = 
   let n = Array.length tour in
@@ -104,13 +87,6 @@ let get_edge (tour:int array) (i:int) =
         )
 
 let swap_targets (tour:int array) i j =
- (* let print_tour s = 
-    begin
-      Printf.printf s; 
-      Array.iter (fun x-> Printf.printf "%d " x) tour ;
-      Printf.printf "\n";
-    end
-  in *)
   (* Get the second vertex in the edge *)
   let to_v i = 
     if i < (Array.length tour) - 1 then i+1 else 0 
@@ -124,9 +100,6 @@ let swap_targets (tour:int array) i j =
     else
       reverse tour (t2) t1 ;
   end
-
-
-
 
 (* 2-opt local search *)
 let two_opt (nV:int) (dist:ArrayDist.t) (cost:float) (tour:int array) =
@@ -143,10 +116,7 @@ let two_opt (nV:int) (dist:ArrayDist.t) (cost:float) (tour:int array) =
         (ArrayDist.get dist u1 u2 nV) in
       let new_val = (ArrayDist.get dist v1 u1 nV) +. 
         (ArrayDist.get dist u2 v2 nV) in
-      ( (*Printf.printf "%d - %d, %d - %d\n" v1 v2 u1 u2;
-       Printf.printf "against %d - %d, %d - %d\n" v1 u2 v2 u1;
-       Printf.printf "new_val %2.4f old_val %2.4f\n" new_val old_val; *)
-       (new_val -. old_val))
+      (new_val -. old_val)
   in
 
   let current_cost = ref cost in
@@ -166,18 +136,81 @@ let two_opt (nV:int) (dist:ArrayDist.t) (cost:float) (tour:int array) =
               begin
                 current_cost := (!current_cost) +. delta;
                 swap_targets current_tour i !j;
-                (* 
-                let c = compute_cost current_tour dist nV in
-                if (c -. !current_cost ) > 1.0 then
-                  (
-                    Printf.printf "Real cost is %2.4f\n" c;
-                    invalid_arg "Cost computation is wrong"
-                  )
-                else (); *)
                 improved := true
               end
             else()
           else();
+          j := !j + 1
+        done;
+      done;
+      if not(!improved) then
+        stop := true
+      else ()
+    done;
+    (!current_cost, current_tour)
+  end
+
+let three_move (tour:int array) u v w =
+  (* We assume u < v < w *)
+  if (not (u<v && v<w)) then
+    raise (WrongConfig "Can't move")
+  else
+    begin
+      let nt = Array.create (Array.length tour) 0 in
+      Array.blit tour 0 nt 0 (u+1);
+      Array.blit tour (v+1) nt (u+1) (w-v);
+      Array.blit tour (u+1) nt (u+w-v+1) (v-u);
+      Array.blit tour (w+1) nt (w+1) ((Array.length tour) - w -1);
+      Array.blit nt 0 tour 0 (Array.length tour)
+    end
+        
+
+let three_opt (nV:int) (dist:ArrayDist.t) (cost:float) (tour:int array) =
+  (* Test if the swapping of 3-opt is improving *)
+  let test (first: int*int) (second: int*int) (third:int*int)=
+    let u1 = fst first in
+    let u2 = snd first in
+    let v1 = fst second in
+    let v2 = snd second in
+    let w1 = fst third in
+    let w2 = snd third in
+    let old_val = (ArrayDist.get dist u1 u2 nV) +. 
+      (ArrayDist.get dist v1 v2 nV) +. 
+      (ArrayDist.get dist w1 w2 nV) in
+    let new_val = (ArrayDist.get dist u1 v2 nV) +. 
+      (ArrayDist.get dist w1 u2 nV) +. 
+      (ArrayDist.get dist v1 w2 nV) in
+    (new_val -. old_val)
+  in
+
+  let current_cost = ref cost in
+  let current_tour = Array.copy tour in
+  let stop = ref false in
+  begin
+    while not(!stop) do
+      let improved = ref false in
+      for i= 0 to (Array.length tour)-2 do
+        let e1 = get_edge current_tour i in
+        let j = ref (i+2) in
+        while (not(!improved)) && (!j < (Array.length tour) -2) do
+          if not((i=0) && ((!j)=(Array.length tour)-2)) then
+            let e2 = get_edge current_tour !j in
+            let k = ref (!j+2) in
+            while not(!improved) && (!k < (Array.length tour)-1) do
+              let e3 = get_edge current_tour !k in
+              let delta = test e1 e2 e3 in
+              if delta < 0.0 then
+                  begin
+                    current_cost := (!current_cost) +. delta;
+                    three_move current_tour i !j !k;
+                    improved := true
+                  end
+              else () 
+                  ;
+              k := !k + 1
+              
+            done;
+          else ();
           j := !j + 1
         done;
       done;

@@ -196,3 +196,12 @@ let array_insert (tour:int array) (i:int) (offset:int) =
 
 let string_of_int_array (x:int array) = 
   Array.fold_left (fun s x -> s ^ " " ^ (string_of_int x )) "" x 
+
+(** An alternate implementation of List.find, avoid using exception *)
+let find_opt pred l  = 
+  let rec loop remain pred = 
+    match remain with
+      | [] -> None
+      | h::tl -> if (pred h) then Some h else loop tl pred
+  in
+  loop l pred

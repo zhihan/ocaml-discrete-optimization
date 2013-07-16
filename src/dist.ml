@@ -73,6 +73,50 @@ module ArrayDist = struct
 
 end
 
+(* Create the distance data structure  *)
+let create_dist nVert (coords: (float*float) list) = 
+  let x = Array.create nVert 0. in
+  let y = Array.create nVert 0. in
+  let rec loop i remain  = 
+    match remain with
+      | [] -> ()
+      | h::tl -> 
+        begin
+          x.(i) <- fst h;
+          y.(i) <- snd h;
+          loop (i+1) tl
+        end 
+  in
+  begin
+    loop 0 coords;
+    ArrayDist.compute_edges x y
+  end
+
+
+module ArrayDistSaving = struct
+  type t = (int*int* float) array
+      
+  let compute_savings (dist:ArrayDist.t) (n:int) = 
+    let m = (n-1)*(n-2)/2 in
+    let savings = Array.create m (0,0, 0.0) in
+    let offset = ref 0 in 
+    begin
+      for i=1 to (n-2) do
+        for j = (i+1) to (n-1) do
+          let saving =  (ArrayDist.get dist i j n) -. 
+            (ArrayDist.get dist i 0 n) -. 
+            (ArrayDist.get dist j 0 n) in
+          savings.(!offset) <- (i,j, saving);
+          offset := !offset + 1
+        done
+      done;
+      Array.sort (fun x y ->
+        match (x,y) with ((_,_,sx),(_,_,sy)) -> Pervasives.compare sx sy ) savings;
+      savings
+    end
+
+end
+
 (* Array of Boolean flags, serves as bit vectors *)
 module BoolArray = struct
   type t = bool array

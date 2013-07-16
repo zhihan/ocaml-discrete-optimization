@@ -32,10 +32,19 @@ let test2 () =
       Array.iter (fun x -> Printf.printf "%d " x) new_tour ;
       Printf.printf "\n"
     end
-  end    
+  end
+
+let test3 () = 
+  let n = 5 in
+  let xy = [(0., 0.); (0., 10.); (-10., 10.); (0., -10.); (10., -10.)] in
+  let d = create_dist n xy in
+  let _ = ArrayDistSaving.compute_savings d n in
+  Printf.printf "Savings computed!\n" 
+    
 let _ = 
   begin
     test1 ();
-    test2 ()
+    test2 ();
+    test3 ()
   end
     
