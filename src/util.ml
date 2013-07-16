@@ -106,7 +106,38 @@ let find_min_idx x f : int =
   end
 
 (* Find min v if f is true *)
-let find_min_filter (x:int array) (v:int->float) (f:int->bool) : int option = 
+let find_min_filter_idx (hi:int) (v:int->float) (f:int->bool) : int option = 
+  let minf = ref 0.0 in
+  let minI = ref 0 in
+  let first = ref true in
+  begin
+    for i = 0 to hi do
+      if (f i) then
+        if (!first) then 
+          (* First time, no need to check minf *)
+          begin
+            minf := v i;
+            minI := i;
+            first := false
+          end
+        else
+          if (!minf) > (v i) then
+            begin
+              minf := v i;
+              minI := i
+            end
+          else 
+           ()
+      else ()
+    done;
+    if not(!first) then
+      Some !minI
+    else
+      None
+  end
+
+(* Find min v if f is true *)
+let find_min_filter (type a) (x:a array) (v:a->float) (f:a->bool) : int option = 
   let minf = ref 0.0 in
   let minI = ref 0 in
   let first = ref true in
@@ -161,3 +192,7 @@ let array_insert (tour:int array) (i:int) (offset:int) =
     Array.blit tour offset new_tour (offset+1) (tn-offset);
     new_tour 
   end
+
+
+let string_of_int_array (x:int array) = 
+  Array.fold_left (fun s x -> s ^ " " ^ (string_of_int x )) "" x 

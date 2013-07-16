@@ -11,6 +11,7 @@ let test1 () =
   let demands = [|0;1;2;3;4|] in
   let sol = Sol.create [|[|1;2|];[|3;4|]|] dist n demands in
   begin
+    Printf.printf "%s" (Sol.to_string sol);
     Printf.printf "Total distance is %2.2f\n" Sol.(sol.cost);
     let l = Sol.( sol.loads ) in
     Array.iter (fun x -> 
