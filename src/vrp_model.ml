@@ -1,5 +1,7 @@
 (* VRP Model *)
 
+exception InvalidSol of string
+
 let create_dist nV (coords: (float*float) list) = 
   let x = Array.create nV 0. in
   let y = Array.create nV 0. in
@@ -18,6 +20,7 @@ let create_dist nV (coords: (float*float) list) =
     Dist.ArrayDist.compute_edges x y
   end
 
+(** Solution *)
 module Sol = struct
 
   open Dist
@@ -54,9 +57,20 @@ module Sol = struct
      loads = compute_loads x demands}
 
   let from_data x c l = {tours = x; cost = c; loads = l}
+
+  let to_string (x:t) =
+    let s = ref "" in
+    begin
+      for i = 0 to ((Array.length x.tours) -1) do
+	s := !s ^ "\n" ^ (string_of_int_array x.tours.(i)) ^
+	  ": " ^ (string_of_int x.loads.(i))
+      done;
+      "Sol {" ^ !s ^ "\n}\n" ^ (string_of_float x.cost) ^ "\n"
+     end
+      
       
   (** Compute the delta for adding a new stop i *)
-  let new_stop (tour:int array) (i:int) (dist:ArrayDist.t) (n:int) : float*int = 
+  let new_stop (tour:int array) (stop:int) (dist:ArrayDist.t) (n:int) : float*int = 
     let delta start finish mid = 
       (ArrayDist.get dist start mid n) +. (ArrayDist.get dist mid finish n) -.
         (ArrayDist.get dist start finish n)
@@ -66,8 +80,35 @@ module Sol = struct
     begin
       Array.blit tour 0 ext 1 tn;  (*copy x.tour to ext.(1)...ext(tn) *)
       let r = array_range 0 tn in
-      let bestIdx = find_min_idx r (fun idx -> delta ext.(idx) ext.(idx+1) i) in
-      ((delta ext.(bestIdx) ext.(bestIdx+1) i), bestIdx)
+      let bestIdx = find_min_idx r (fun idx -> delta ext.(idx) ext.(idx+1) stop) in
+      ((delta ext.(bestIdx) ext.(bestIdx+1) stop), bestIdx)
     end
+
+  (** Compute the minimal cost way to add a new stop to the solution *)
+  let best_new_stop (x:t) (vehicle:int) (stop:int) 
+      (demand:int) (cap:int) (dist:ArrayDist.t) (n:int) = 
+    let cap_constraint i = 
+      x.loads.(i) + demand <= cap
+    in
+    let delta_idx i = 
+      let (delta, _) = new_stop x.tours.(i) stop dist n in
+      delta
+    in
+    let maxIdx = (Array.length x.tours) -1  in
+    let someIdx = find_min_filter_idx maxIdx delta_idx cap_constraint in
+    match someIdx with
+      | Some i -> 
+	let (delta, bestIdx) = new_stop x.tours.(i) stop dist n in
+	let new_tour = array_insert x.tours.(i) stop bestIdx in
+	begin
+	  let new_tours = Array.copy x.tours in
+	  new_tours.(i) <- new_tour;
+	  let new_loads = Array.copy x.loads in
+	  new_loads.(i) <- x.loads.(i) + demand;
+	  {tours = new_tours;
+	   cost = x.cost +. delta;
+	   loads = new_loads}
+	end
+      | None ->  raise (InvalidSol "No feasible solution found")
 
 end
