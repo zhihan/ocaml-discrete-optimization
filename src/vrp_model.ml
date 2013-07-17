@@ -145,6 +145,72 @@ module Sol = struct
       ) sol.tours ;
       { tours = new_tours; cost = !delta_cost +. sol.cost; loads = sol.loads }
     end
+
+
+  (** 
+      Crossover local search
+      
+     Cross over is taking one vehicle [0 ..i .. n] and another
+     vehicle [0 .. j .. m] and switch customers, it is either 
+     forward, i.e., [0 .. i (j+1) ... m] and [0 .. j (i+1) .. n] or
+     backward, i.e., [ 0 .. i j .. 0] [m .. (j+1) (i+1) .. n] 
+  *)
+  let crossover_delta_fwd (x:t) v1 i1 v2 i2 (dist:ArrayDist.t) (n:int) =
+    (* Assume i1 < n-1  and i2 < m-1 *)
+    let u1 = x.tours.(v1).(i1) in
+    let u2 = x.tours.(v1).(i1+1) in
+    let v1 = x.tours.(v2).(i2) in
+    let v2 = x.tours.(v2).(i2+1) in
+    (ArrayDist.get dist u1 u2 n) +. (ArrayDist.get dist v1 v2 n) -.
+      (ArrayDist.get dist u1 v2 n) -. (ArrayDist.get dist u2 v1 n)
+
+  let crossover_loads_fwd (x:t) v1 i1 v2 i2 demands = 
+    let sum_demands tour lo hi = 
+      sub_array_fold_left (fun s e -> s + demands.(e)) 0 tour lo hi
+    in
+    let n1 = Array.length x.tours.(v1) in
+    let dv11 = sum_demands x.tours.(v1) 0 (v1+1) in
+    let dv12 = sum_demands x.tours.(v1) (v1+1) n1 in
+    let n2 = Array.length x.tours.(v2) in
+    let dv21 = sum_demands x.tours.(v2) 0 (v1+1) in
+    let dv22 = sum_demands x.tours.(v2) (v2+1) n2 in
+    ((dv11+dv22), (dv12+dv21))
+ 
+  let crossover_constraint_fwd (x:t) v1 i1 v2 i2 demands cap =
+    let (d1,d2) = crossover_loads_fwd x v1 i1 v2 i2 demands in
+    (d1 <= cap && d2 <= cap)
+
+  let crossover_move_fwd (x:t) v1 i1 v2 i2 dist n demands cap = 
+    let delta = crossover_delta_fwd x v1 i1 v2 i2 dist n in
+    let (d1, d2) = crossover_loads_fwd x v1 i1 v2 i2 demands in
+    (* Upate the tours *)
+    let n1 = Array.length x.tours.(v1) in
+    let n2 = Array.length x.tours.(v2) in
+    begin
+      let new_loads = Array.copy x.loads in
+      x.loads.(v1) <- d1;
+      x.loads.(v2) <- d2;
+      let new_tours = Array.copy x.tours in 
+      let t1 = Array.create (v1 + n2 - v2) 0 in
+      Array.blit x.tours.(v1) 0 t1 0 (v1 + 1); 
+      Array.blit x.tours.(v2) (v2+1) t1 (v1+1) (n2-v2-1);
+      x.tours.(v1) <- t1;
+      let t2 = Array.create (v2 + n1 - v1) 0 in
+      Array.blit x.tours.(v2) 0 t2 0 (v2 + 1); 
+      Array.blit x.tours.(v2) (v1+1) t2 (v2+1) (n1-v1-1);
+      {tours = new_tours; cost = x.cost +. delta; loads = new_loads }
+    end
+
+  (** Backward crossover operations  *)
+  let crossover_delta_bwd (x:t) v1 i1 v2 i2 (dist:ArrayDist.t) (n:int) =
+    (* Assume i1 < n-1  and i2 < m-1 *)
+    let u1 = x.tours.(v1).(i1) in
+    let u2 = x.tours.(v1).(i1+1) in
+    let v1 = x.tours.(v2).(i2) in
+    let v2 = x.tours.(v2).(i2+1) in
+    (ArrayDist.get dist u1 u2 n) +. (ArrayDist.get dist v1 v2 n) -.
+      (ArrayDist.get dist u1 v1 n) -. (ArrayDist.get dist u2 v2 n)
+      
       
 
 end

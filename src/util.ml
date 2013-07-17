@@ -205,3 +205,13 @@ let find_opt pred l  =
       | h::tl -> if (pred h) then Some h else loop tl pred
   in
   loop l pred
+
+
+let sub_array_fold_left f s0 x (s:int) (e:int) = 
+  let rec loop i acc = 
+    if (i < e) then
+      let next = f acc x.(i) in
+      loop (i+1) next
+    else acc
+  in
+  loop s s0 

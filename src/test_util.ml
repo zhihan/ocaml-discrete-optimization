@@ -68,6 +68,17 @@ let test_reverse () =
     else ()
   end
 
+let test_sub_array_fold_left () = 
+  let a = [|1;2;3;4;5|] in
+  begin
+    let sum1 = sub_array_fold_left (fun s x-> s+x) 0 a 0 3 in
+    Printf.printf "Sub-sum is %d\n" sum1;
+    let sum2 = sub_array_fold_left (fun s x-> s+x) 0 a 3 3 in
+    Printf.printf "Sub-sum is %d\n" sum2;
+    let sum2 = sub_array_fold_left (fun s x-> s+x) 0 a 4 3 in
+    Printf.printf "Sub-sum is %d\n" sum2;
+  end
+
 let main () = 
   begin
     test_array_range (); 
@@ -76,6 +87,7 @@ let main () =
     test_find_max ();
     test_find_min ();
     test_find_min_filter ();
-    test_reverse () 
+    test_reverse () ;
+    test_sub_array_fold_left ()
   end
 let _ = main ()
