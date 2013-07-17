@@ -96,14 +96,14 @@ let create_dist nVert (coords: (float*float) list) =
 module ArrayDistSaving = struct
   type t = (int*int* float) array
       
-  let compute_savings (dist:ArrayDist.t) (n:int) = 
+  let compute_savings (lambda:float) (dist:ArrayDist.t) (n:int) = 
     let m = (n-1)*(n-2)/2 in
     let savings = Array.create m (0,0, 0.0) in
     let offset = ref 0 in 
     begin
       for i=1 to (n-2) do
         for j = (i+1) to (n-1) do
-          let saving =  (ArrayDist.get dist i j n) -. 
+          let saving =  lambda *. (ArrayDist.get dist i j n) -. 
             (ArrayDist.get dist i 0 n) -. 
             (ArrayDist.get dist j 0 n) in
           savings.(!offset) <- (i,j, saving);

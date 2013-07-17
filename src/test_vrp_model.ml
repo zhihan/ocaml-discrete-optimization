@@ -40,11 +40,41 @@ let test3 () =
   let d = create_dist n xy in
   let _ = ArrayDistSaving.compute_savings d n in
   Printf.printf "Savings computed!\n" 
+
+let test4 () = 
+  let n = 5 in
+  let xy = [(0., 0.); (0., 10.); (-10., 10.); (0., -10.); (10., -10.)] in
+  let d = create_dist n xy in
+  let demands = Array.of_list [0;1;1;1;1] in
+  let cap = 5 in
+  let tours = [| [|1;4|]; [|3;2|] |] in 
+  let sol = Sol.create tours d n demands in
+  let sol2 = Sol.crossover_move_fwd sol 0 0 1 0 d n demands cap in
+  begin
+    Printf.printf "Before %s\n" (Sol.to_string sol);
+    Printf.printf "After %s\n" (Sol.to_string sol2)
+  end
+let test5 () = 
+  let n = 5 in
+  let xy = [(0., 0.); (0., 10.); (-10., 10.); (0., -10.); (10., -10.)] in
+  let d = create_dist n xy in
+  let demands = Array.of_list [0;1;1;1;1] in
+  let cap = 5 in
+  let tours = [| [|1;4|]; [|3;2|] |] in 
+  let sol = Sol.create tours d n demands in
+  let sol2 = Sol.crossover_move_bwd sol 0 0 1 0 d n demands cap in
+  begin
+    Printf.printf "Before %s\n" (Sol.to_string sol);
+    Printf.printf "After %s\n" (Sol.to_string sol2)
+  end
+     
     
 let _ = 
   begin
     test1 ();
     test2 ();
-    test3 ()
+    test3 ();
+    test4 ();
+    test5 ()
   end
     

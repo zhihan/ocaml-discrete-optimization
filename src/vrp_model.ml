@@ -1,5 +1,7 @@
 (* VRP Model *)
 
+open Unix (*time function *)
+
 exception InvalidSol of string
 
 let create_dist nV (coords: (float*float) list) = 
@@ -161,19 +163,20 @@ module Sol = struct
     let u2 = x.tours.(v1).(i1+1) in
     let v1 = x.tours.(v2).(i2) in
     let v2 = x.tours.(v2).(i2+1) in
-    (ArrayDist.get dist u1 u2 n) +. (ArrayDist.get dist v1 v2 n) -.
-      (ArrayDist.get dist u1 v2 n) -. (ArrayDist.get dist u2 v1 n)
+    (ArrayDist.get dist u1 v2 n) +. (ArrayDist.get dist u2 v1 n) -.
+      (ArrayDist.get dist u1 u2 n) -. (ArrayDist.get dist v1 v2 n) 
+      
 
   let crossover_loads_fwd (x:t) v1 i1 v2 i2 demands = 
     let sum_demands tour lo hi = 
       sub_array_fold_left (fun s e -> s + demands.(e)) 0 tour lo hi
     in
     let n1 = Array.length x.tours.(v1) in
-    let dv11 = sum_demands x.tours.(v1) 0 (v1+1) in
-    let dv12 = sum_demands x.tours.(v1) (v1+1) n1 in
+    let dv11 = sum_demands x.tours.(v1) 0 (i1+1) in
+    let dv12 = sum_demands x.tours.(v1) (i1+1) n1 in
     let n2 = Array.length x.tours.(v2) in
-    let dv21 = sum_demands x.tours.(v2) 0 (v1+1) in
-    let dv22 = sum_demands x.tours.(v2) (v2+1) n2 in
+    let dv21 = sum_demands x.tours.(v2) 0 (i2+1) in
+    let dv22 = sum_demands x.tours.(v2) (i2+1) n2 in
     ((dv11+dv22), (dv12+dv21))
  
   let crossover_constraint_fwd (x:t) v1 i1 v2 i2 demands cap =
@@ -187,17 +190,20 @@ module Sol = struct
     let n1 = Array.length x.tours.(v1) in
     let n2 = Array.length x.tours.(v2) in
     begin
+      (* Printf.printf "Fwd swapping %d %d with %d %d\n" v1 i1 v2 i2; 
+      print_endline ""; *)
       let new_loads = Array.copy x.loads in
       x.loads.(v1) <- d1;
       x.loads.(v2) <- d2;
       let new_tours = Array.copy x.tours in 
-      let t1 = Array.create (v1 + n2 - v2) 0 in
-      Array.blit x.tours.(v1) 0 t1 0 (v1 + 1); 
-      Array.blit x.tours.(v2) (v2+1) t1 (v1+1) (n2-v2-1);
-      x.tours.(v1) <- t1;
-      let t2 = Array.create (v2 + n1 - v1) 0 in
-      Array.blit x.tours.(v2) 0 t2 0 (v2 + 1); 
-      Array.blit x.tours.(v2) (v1+1) t2 (v2+1) (n1-v1-1);
+      let t1 = Array.create (i1 + n2 - i2) 0 in
+      Array.blit x.tours.(v1) 0 t1 0 (i1 + 1); 
+      Array.blit x.tours.(v2) (i2+1) t1 (i1+1) (n2-i2-1);
+      new_tours.(v1) <- t1;
+      let t2 = Array.create (i2 + n1 - i1) 0 in
+      Array.blit x.tours.(v2) 0 t2 0 (i2 + 1); 
+      Array.blit x.tours.(v1) (i1+1) t2 (i2+1) (n1-i1-1);
+      new_tours.(v2) <- t2;
       {tours = new_tours; cost = x.cost +. delta; loads = new_loads }
     end
 
@@ -208,13 +214,177 @@ module Sol = struct
     let u2 = x.tours.(v1).(i1+1) in
     let v1 = x.tours.(v2).(i2) in
     let v2 = x.tours.(v2).(i2+1) in
-    (ArrayDist.get dist u1 u2 n) +. (ArrayDist.get dist v1 v2 n) -.
-      (ArrayDist.get dist u1 v1 n) -. (ArrayDist.get dist u2 v2 n)
+    (ArrayDist.get dist u1 v1 n) +. (ArrayDist.get dist u2 v2 n) -.
+      (ArrayDist.get dist u1 u2 n) -. (ArrayDist.get dist v2 v2 n)
       
+  let crossover_loads_bwd (x:t) v1 i1 v2 i2 demands = 
+    let sum_demands tour lo hi = 
+      sub_array_fold_left (fun s e -> s + demands.(e)) 0 tour lo hi
+    in
+    let n1 = Array.length x.tours.(v1) in
+    let dv11 = sum_demands x.tours.(v1) 0 (i1+1) in
+    let dv12 = sum_demands x.tours.(v1) (i1+1) n1 in
+    let n2 = Array.length x.tours.(v2) in
+    let dv21 = sum_demands x.tours.(v2) 0 (i2+1) in
+    let dv22 = sum_demands x.tours.(v2) (i2+1) n2 in
+    ((dv11+dv21), (dv12+dv22))
       
+  let crossover_constraint_bwd (x:t) v1 i1 v2 i2 demands cap =
+    let (d1,d2) = crossover_loads_bwd x v1 i1 v2 i2 demands in
+    (d1 <= cap && d2 <= cap)
 
+  let crossover_move_bwd (x:t) v1 i1 v2 i2 dist n demands cap = 
+    let delta = crossover_delta_bwd x v1 i1 v2 i2 dist n in
+    let (d1, d2) = crossover_loads_bwd x v1 i1 v2 i2 demands in
+    (* Upate the tours *)
+    let n1 = Array.length x.tours.(v1) in
+    let n2 = Array.length x.tours.(v2) in
+    begin
+      (* Printf.printf "Bwd swapping %d %d with %d %d\n" v1 i1 v2 i2; *)
+      let new_loads = Array.copy x.loads in
+      x.loads.(v1) <- d1;
+      x.loads.(v2) <- d2;
+      let new_tours = Array.copy x.tours in 
+      let t1 = Array.create (i1 + i2 +2) 0 in
+      Array.blit x.tours.(v1) 0 t1 0 (i1 + 1); 
+      Array.blit x.tours.(v2) (0) t1 (i1+1) (i2+1);
+      reverse t1 (i1+1) (i1+i2+1);
+      new_tours.(v1) <- t1;
+      let t2 = Array.create (n1 + n2 - i1 -i2 -2) 0 in
+      Array.blit x.tours.(v1) (i1+1) t2 0 (n1-i1-1);
+      reverse t2 0 (n1-i1-2);
+      Array.blit x.tours.(v2) (i2+1) t2 (n1-i1-1) (n2-i2-1);
+      new_tours.(v2) <- t2;
+      {tours = new_tours; cost = x.cost +. delta; loads = new_loads }
+    end
+      
 end
 
+(* Improve the solution using local search *)
+let improve ?timeout:(tout=0.5) sol dist n demands cap nV =
+  let starttime = time () in
+  let best_so_far = ref sol in
+  let temp  = ref 100. in  (* Simulated annealing *)
+  let _ = Random.self_init () in
+  let acceptable delta = (* SA accepting criteria *)
+    if delta < -0.001 then 
+      true
+    else 
+      if  (!temp > 0.00001) then
+        let prob = exp ((-.delta) /. !temp) in
+        ((Random.float 1.0) < prob)
+      else
+        false
+  in
+  let find_improving (x:Sol.t) v i =
+    let stop = ref false in
+    let accepted = ref false in
+    let vI = ref 0 in
+    let j = ref 0 in
+    let best_so_far = ref (0,0,false) in
+    let best_delta = ref 0. in
+    begin
+      while not(!stop) do
+        begin
+          if (!vI <> v) && ((Array.length x.Sol.tours.(!vI)) > 1) then
+            (let delta = Sol.crossover_delta_fwd x v i !vI !j dist n in
+            if (acceptable delta) &&
+              (Sol.crossover_constraint_fwd x v i !vI !j demands cap) then
+              (* Found improving solution *)
+              (
+                (*Printf.printf "Fwd swap %d %d with %d %d " v i !vI !j ;
+                Printf.printf "Improve by %2.2f" delta; 
+                print_endline ""; *)
+                stop := true;
+                accepted := true;
+                best_delta := delta;
+                best_so_far := (!vI, !j, true)
+              )
+            else 
+              let delta = Sol.crossover_delta_bwd x v i !vI !j dist n in
+               if (acceptable delta) &&
+                 (Sol.crossover_constraint_bwd x v i !vI !j demands cap) then
+                 (* Found improving solution *)
+                 (
+                   (*Printf.printf "Bwd swap %d %d with %d %d " v i !vI !j ;
+                   Printf.printf "Improve by %2.2f\n" delta; 
+                   print_endline ""; *)
+                   stop := true;
+                   accepted := true;
+                   best_delta := delta;
+                   best_so_far := (!vI, !j, false)
+                 ) 
+            )
+          else ();
+
+          (* Move indices forward *)
+          if not(!stop) then
+            begin
+              j := !j + 1;
+              if !j >= (Array.length x.Sol.tours.(!vI) - 1) then
+                (
+                  j := 0;
+                  vI := !vI + 1
+                )
+              else () ;
+              
+              if !vI = (Array.length x.Sol.tours ) then 
+                stop := true
+              else ()
+            end
+          else ()
+        end
+      done;
+      if !accepted then
+        Some !best_so_far
+      else
+        None
+    end
+  in
+  begin
+    Random.self_init () ;
+    let stop = ref false in 
+    while not(!stop) do
+      let v = Random.int (Array.length !best_so_far.Sol.tours) in
+      let improved = ref false in
+      let i = ref 0 in
+      if (Array.length !best_so_far.Sol.tours.(v) > 1) then
+        while not(!improved) && not(!stop) &&  
+          (!i < (Array.length !best_so_far.Sol.tours.(v))-1) do
+          begin
+            (let xOpt = find_improving !best_so_far v !i in
+             match xOpt with
+               | Some (vI, j, fwd) -> 
+                 begin
+                   best_so_far := 
+                     if fwd then Sol.crossover_move_fwd 
+                       !best_so_far v !i vI j dist n demands cap 
+                     else Sol.crossover_move_bwd 
+                       !best_so_far v !i vI j dist n demands cap
+                   ;
+                   improved := true;
+                   (* print_endline ("Improving " ^ 
+                                     (string_of_float !best_so_far.Sol.cost) ^ 
+                   " @ " ^ (string_of_float !temp) )  *)
+                 end
+               | None -> 
+                 begin
+                   i := !i + 1
+                 end
+            );
+            if !temp > 0.0001 then
+              temp := 0.9 *. !temp
+            else ();
+            let now = time () in
+            if now -. starttime > tout then
+              stop := true
+            else ()
+          end
+        done
+      else ()
+    done;
+    !best_so_far
+  end
 
 module ClarkeWrightHeuristic = struct
   (** Initialize a list of singleton arrays*)
@@ -253,16 +423,16 @@ module ClarkeWrightHeuristic = struct
           None
       | _ -> None
       
-  let parallel n nV cap demands xy = 
+  let parallel lambda n nV cap demands xy = 
     let dist = create_dist n xy in
-    let savings = ArrayDistSaving.compute_savings dist n in
+    let savings = ArrayDistSaving.compute_savings lambda dist n in
     let config = ref (init n) in
     let stop = ref false in
     let i = ref 0 in
     begin
       while not(!stop) && (!i < Array.length savings) do
-        let (p1,p2,saving) = savings.(!i) in
-        if (saving > 0. && (List.length !config) <= nV) then
+        let (p1,p2,_) = savings.(!i) in
+        if ((List.length !config) <= nV) then
           stop := true
         else
           begin
@@ -285,7 +455,7 @@ module ClarkeWrightHeuristic = struct
     end
 end
 
-let first_fit n nV cap demands xy = 
+let first_fit ?timeout:(tout=60.) n nV cap demands xy = 
   let dist = create_dist n xy in
   let d = Array.mapi (fun i x -> (i,x) ) demands in 
   let _ = Array.sort (
@@ -301,7 +471,10 @@ let first_fit n nV cap demands xy =
         | None -> raise (InvalidSol "Can't find a fit")
         | Some s -> sol := s
     done;
-    Sol.three_opt !sol dist n
+    let x = Sol.three_opt !sol dist n in
+    let x = improve ~timeout:tout x dist n demands cap nV in
+    let x = Sol.three_opt x dist n in
+    x
   end
 
 let permute a = 
@@ -319,7 +492,7 @@ let permute a =
     done;
   end
 
-let random_fit n nV cap demands xy = 
+let random_fit ?timeout:(tout=6.0) n nV cap demands xy = 
   let dist = create_dist n xy in
   let d = Array.mapi (fun i x -> (i,x) ) demands in 
   let _ = permute d in
@@ -338,5 +511,12 @@ let random_fit n nV cap demands xy =
         else () ;
       end
     done;
-    Sol.three_opt !sol dist n
+    
+    let x = Sol.three_opt !sol dist n in
+    let x = improve ~timeout:tout x dist n demands cap nV in
+    let x = Sol.three_opt x dist n in
+    x
   end
+
+
+

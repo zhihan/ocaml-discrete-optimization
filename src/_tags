@@ -1,3 +1,9 @@
 true: use_str
 <wl_greedy.*>: use_unix
 <wl.top>: use_unix
+<vrp_model.*>: use_unix
+<vrp.top>: use_unix
+<vrp_random_fit.*>: use_unix
+<vrp_first_fit.*>: use_unix
+<vrp_clarke_wright.*>: use_unix
+<test_vrp_model.*>: use_unix

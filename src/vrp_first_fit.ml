@@ -28,7 +28,7 @@ if Array.length Sys.argv > 1 then
     let filename = Sys.argv.(1) in  
     let n,nV,cap, d, xy = process_input filename in
     let demands = Array.of_list d in
-    let sol = first_fit n nV cap demands xy in
+    let sol = first_fit ~timeout:20 n nV cap demands xy in
     begin
       Printf.printf "%s\n" (Sol.to_string sol);
 

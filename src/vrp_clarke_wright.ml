@@ -2,6 +2,7 @@
 
 open Vrp_model
 open Vrp_parse_input
+open Unix
 
 let print_result sol nV = 
   let oc = open_out "result.dat" in
@@ -27,9 +28,34 @@ if Array.length Sys.argv > 1 then
     let filename = Sys.argv.(1) in  
     let n,nV,cap, d, xy = process_input filename in
     let demands = Array.of_list d in
-    let sol = ClarkeWrightHeuristic.parallel n nV cap demands xy in
+    Random.self_init () ;
+    let stop = ref false in
+    let best_so_far = ref (ClarkeWrightHeuristic.parallel 1. n nV cap demands xy) in
+    let starttime = time () in
     begin
-      Printf.printf "%s\n" (Sol.to_string sol);
-      print_result sol nV;
+      print_endline (" Best so far : " ^ (string_of_float !best_so_far.Sol.cost));
+      while not(!stop) do 
+        Random.self_init ();
+        
+        let lambda = Random.float 2.0 in
+        let sol = ClarkeWrightHeuristic.parallel lambda n nV cap demands xy in
+        let dist = create_dist n xy in
+        let x = Sol.three_opt sol dist n in
+        let x = improve ~timeout:0.2 x dist n demands cap nV in
+        let x = Sol.three_opt x dist n in
+        if (x.Sol.cost < !best_so_far.Sol.cost) then
+          (
+            print_endline (" Best so far : " ^ (string_of_float x.Sol.cost));
+            best_so_far := x
+          )
+        else () ;
+        
+        let now = time () in
+        if now -. starttime > 36000. then
+          stop := true
+        else (); 
+      done;
+      Printf.printf "%s\n" (Sol.to_string !best_so_far);
+      print_result !best_so_far nV
     end
 
