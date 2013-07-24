@@ -164,6 +164,14 @@ let three_move (tour:int array) u v w =
       Array.blit nt 0 tour 0 (Array.length tour)
     end
         
+let three_move2 (tour:int array) u v w = 
+  if (not (u<v && v<w)) then
+    raise (WrongConfig "Can't move")
+  else
+    begin
+      reverse tour (u+1) v; 
+      reverse tour (v+1) w;
+    end
 
 let three_opt (nV:int) (dist:ArrayDist.t) (cost:float) (tour:int array) =
   (* Test if the swapping of 3-opt is improving *)
@@ -183,6 +191,24 @@ let three_opt (nV:int) (dist:ArrayDist.t) (cost:float) (tour:int array) =
     (new_val -. old_val)
   in
 
+  (* Second way of performing three opt *)
+  let test2 (first:int*int) (second: int*int) (third:int*int) = 
+    let u1 = fst first in
+    let u2 = snd first in
+    let v1 = fst second in
+    let v2 = snd second in
+    let w1 = fst third in
+    let w2 = snd third in
+    let old_val = (ArrayDist.get dist u1 u2 nV) +. 
+      (ArrayDist.get dist v1 v2 nV) +. 
+      (ArrayDist.get dist w1 w2 nV) in
+    let new_val = (ArrayDist.get dist u1 v1 nV) +. 
+      (ArrayDist.get dist w1 u2 nV) +. 
+      (ArrayDist.get dist v2 w2 nV) in
+    (new_val -. old_val)
+  in
+    
+
   let current_cost = ref cost in
   let current_tour = Array.copy tour in
   let stop = ref false in
@@ -199,13 +225,26 @@ let three_opt (nV:int) (dist:ArrayDist.t) (cost:float) (tour:int array) =
             while not(!improved) && (!k < (Array.length tour)-1) do
               let e3 = get_edge current_tour !k in
               let delta = test e1 e2 e3 in
-              if delta < 0.0 then
+              if delta < (-0.5) then
                   begin
                     current_cost := (!current_cost) +. delta;
                     three_move current_tour i !j !k;
                     improved := true
                   end
-              else () 
+              else (* Try the other way *)
+                begin
+                  let delta = test2 e1 e2 e3 in
+                  if delta < (-0.5) then
+                    begin
+                      current_cost := (!current_cost) +. delta;
+                      three_move2 current_tour i !j !k;
+                      improved := true
+                    end
+                  else 
+                    (
+                      improved := false
+                    )
+                end 
                   ;
               k := !k + 1
               

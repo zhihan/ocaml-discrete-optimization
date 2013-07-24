@@ -11,7 +11,25 @@ let array_range i j =
       done;
       r
     end
-  
+
+let permute a = 
+  begin
+    let n = Array.length a in
+    for i = 0 to n -1 do
+      let idx = Random.int (n-i) in
+      if (idx > 0) then
+        begin
+          let tmp = a.(idx) in
+          a.(idx) <- a.(i+idx) ;
+          a.(i+idx) <- tmp;
+        end 
+    done;
+  end
+
+let random_range i j =
+  let r = array_range i j in
+  let _ = permute r in
+  r
 
 (* Search in an array *)
 let find_first x pred : int option = 

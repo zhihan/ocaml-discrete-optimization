@@ -6,4 +6,6 @@ true: use_str
 <vrp_random_fit.*>: use_unix
 <vrp_first_fit.*>: use_unix
 <vrp_clarke_wright.*>: use_unix
+<vrp_clarke_wright2.*>: use_unix
+<vrp_random.*>: use_unix
 <test_vrp_model.*>: use_unix

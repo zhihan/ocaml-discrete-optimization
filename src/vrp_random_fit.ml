@@ -30,12 +30,13 @@ if Array.length Sys.argv > 1 then
     let n,nV,cap, d, xy = process_input filename in
     let demands = Array.of_list d in
     let stop = ref false in
-    let best_so_far = ref (first_fit ~timeout:0.2 n nV cap demands xy) in
+    let best_so_far = ref (first_fit ~timeout:0.5 n nV cap demands xy) in
     let starttime = time () in
     begin
       while not(!stop) do
         let sol = 
-          try Some (random_fit ~timeout:0.2 n nV cap demands xy)
+          try Some (random_fit ~timeout:60.0 n nV cap demands xy 
+                      (!best_so_far.Sol.cost +.100.))
           with _ -> None 
         in
         match sol with
@@ -45,11 +46,14 @@ if Array.length Sys.argv > 1 then
                 print_endline (" Best so far : " ^ (string_of_float x.Sol.cost));
                 best_so_far := x
               )
-            else () 
+            else (
+               print_endline (" Discard local minimum : " ^ (string_of_float x.Sol.cost) ^
+               " best: " ^ (string_of_float !best_so_far.Sol.cost) );
+            ) 
           |_ -> ()
             ;
         let now = time () in
-        if now -. starttime > 1200. then
+        if now -. starttime > 3600. then
           stop := true
         else ()
       done;

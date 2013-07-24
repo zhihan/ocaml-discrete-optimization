@@ -38,7 +38,7 @@ let test3 () =
   let n = 5 in
   let xy = [(0., 0.); (0., 10.); (-10., 10.); (0., -10.); (10., -10.)] in
   let d = create_dist n xy in
-  let _ = ArrayDistSaving.compute_savings d n in
+  let _ = ArrayDistSaving.compute_savings 1.0 d n in
   Printf.printf "Savings computed!\n" 
 
 let test4 () = 
@@ -46,13 +46,16 @@ let test4 () =
   let xy = [(0., 0.); (0., 10.); (-10., 10.); (0., -10.); (10., -10.)] in
   let d = create_dist n xy in
   let demands = Array.of_list [0;1;1;1;1] in
-  let cap = 5 in
+  let cap = 1 in
   let tours = [| [|1;4|]; [|3;2|] |] in 
   let sol = Sol.create tours d n demands in
   let sol2 = Sol.crossover_move_fwd sol 0 0 1 0 d n demands cap in
   begin
     Printf.printf "Before %s\n" (Sol.to_string sol);
-    Printf.printf "After %s\n" (Sol.to_string sol2)
+    Printf.printf "After %s\n" (Sol.to_string sol2);
+    Printf.printf "New penalty %d\n" 
+      (Sol.crossover_penalty_fwd sol 0 0 1 0 demands cap);
+    Printf.printf "Penalty after move %d\n" (Sol.overload_penalty sol2 cap)
   end
 let test5 () = 
   let n = 5 in
@@ -65,9 +68,59 @@ let test5 () =
   let sol2 = Sol.crossover_move_bwd sol 0 0 1 0 d n demands cap in
   begin
     Printf.printf "Before %s\n" (Sol.to_string sol);
-    Printf.printf "After %s\n" (Sol.to_string sol2)
+    Printf.printf "After %s\n" (Sol.to_string sol2);
+   
   end
      
+let test6 () = 
+  let n = 5 in
+  let xy = [(0., 0.); (0., 10.); (-10., 10.); (0., -10.); (10., -10.)] in
+  let d = create_dist n xy in
+  let demands = Array.of_list [0;1;1;1;1] in
+  let cap = 1 in
+  let tours = [| [|1;4|]; [|3;2|] |] in 
+  let sol = Sol.create tours d n demands in
+  let sol2 = Sol.mc_move sol 0 0 1 0 d n demands cap in
+  begin
+    Printf.printf "Move a customer:\n";
+    Printf.printf "Before %s\n" (Sol.to_string sol);
+    Printf.printf "After %s\n" (Sol.to_string sol2);
+    Printf.printf "New penalty %d\n" 
+      (Sol.crossover_penalty_bwd sol 0 0 1 0 demands cap);
+    Printf.printf "Penalty after move %d\n" (Sol.overload_penalty sol2 cap)
+  end
+
+
+ let test7 () = 
+  let n = 5 in
+  let xy = [(0., 0.); (0., 10.); (-10., 10.); (0., -10.); (10., -10.)] in
+  let d = create_dist n xy in
+  let demands = Array.of_list [0;1;2;1;2] in
+  let cap = 1 in
+  let tours = [| [|1;4|]; [|3;2|] |] in 
+  let sol = Sol.create tours d n demands in
+  let sol2 = Sol.mc_move sol 0 0 1 0 d n demands cap in
+  begin
+    print_endline (Sol.to_string sol);
+    Printf.printf "Penalty %d\n" (Sol.overload_penalty sol cap);
+    Printf.printf "New penalty %d\n" (Sol.mc_penalty sol 0 0 1 0 demands cap);
+    Printf.printf "Penalty after move %d\n" (Sol.overload_penalty sol2 cap)
+  end
+
+ let test8 () =
+   let _ = Random.self_init () in
+   let n = 5 in
+   let xy = [(0., 0.); (0., 10.); (-10., 10.); (0., -10.); (10., -10.)] in
+   let dist = create_dist n xy in
+   let demands = Array.of_list [0;1;2;1;2] in
+   let cap = 1 in
+   let nV = 2 in
+   let sol = random_sol n nV demands dist in 
+   begin
+     Printf.printf "Random solution:";
+     print_endline (Sol.to_string sol);
+     Printf.printf "Penalty %d\n" (Sol.overload_penalty sol cap)
+   end
     
 let _ = 
   begin
@@ -75,6 +128,9 @@ let _ =
     test2 ();
     test3 ();
     test4 ();
-    test5 ()
+    test5 ();
+    test6 ();
+    test7 ();
+    test8 ()
   end
     

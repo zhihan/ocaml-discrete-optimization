@@ -35,7 +35,7 @@ end
    entries. All distances are stored in a single array. *)
 module ArrayDist = struct
   type t = float array
-
+  exception WrongIndex of string 
   (* Assume the dist matrix is [ a[00] a[01] a[02], ... a[20] a[21] a[22]],
      We only need to store the entries [ a[01] a[02] a[12] ] in an array. 
      
@@ -64,8 +64,21 @@ module ArrayDist = struct
     )
 
   let get d i j n = 
-    if i!= j then 
-      d.(edge_idx i j n)
+    if i <> j then 
+      let eIdx = edge_idx i j n in
+      if (eIdx < n*(n-1)/2) && (eIdx>=0) then
+        try 
+          d.(eIdx)
+        with
+            Invalid_argument e -> raise (WrongIndex (
+          (string_of_int i) ^ " " ^
+            (string_of_int j) ^ " of " ^
+            (string_of_int n)))
+      else
+        raise (WrongIndex (
+          (string_of_int i) ^ " " ^
+            (string_of_int j) ^ " of " ^
+            (string_of_int n)))
     else 0.0
   
   let getE d (e:int*int) n = 
@@ -101,7 +114,7 @@ module ArrayDistSaving = struct
     let savings = Array.create m (0,0, 0.0) in
     let offset = ref 0 in 
     begin
-      for i=1 to (n-2) do
+      for i=1 to (n-1) do
         for j = (i+1) to (n-1) do
           let saving =  lambda *. (ArrayDist.get dist i j n) -. 
             (ArrayDist.get dist i 0 n) -. 
